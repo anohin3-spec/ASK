@@ -1,0 +1,9 @@
+# Зависимости для десктоп-программы ASK (Windows)
+openpyxl==3.1.2
+tksheet
+pymupdf>=1.24.0
+pikepdf>=8.0
+python-telegram-bot>=21.0
+python-dotenv>=1.0.0
+supabase>=2.0.0
+bcrypt
