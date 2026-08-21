@@ -100,53 +100,57 @@ def _owner_ids() -> set[int]:
     return out
 
 
+_EMPTY_SESSIONS = {
+    "allowed_user_ids": [],
+    "driver_bindings": {},
+    "owner_mode_overrides": {},
+    "admin_user_ids": [],
+    "pending_value_requests": {},
+}
+# In-memory sessions: нужны на хостинге, где запись telegram_sessions.json может быть недоступна.
+_SESSIONS_CACHE: dict[str, Any] | None = None
+
+
+def _normalize_sessions(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        payload = {}
+    out = dict(_EMPTY_SESSIONS)
+    out.update(payload)
+    out.setdefault("allowed_user_ids", [])
+    out.setdefault("driver_bindings", {})
+    out.setdefault("owner_mode_overrides", {})
+    out.setdefault("admin_user_ids", [])
+    out.setdefault("pending_value_requests", {})
+    return out
+
+
 def _load_sessions() -> dict[str, Any]:
+    global _SESSIONS_CACHE
+    if _SESSIONS_CACHE is not None:
+        return _SESSIONS_CACHE
     if not os.path.exists(SESSIONS_PATH):
-        return {
-            "allowed_user_ids": [],
-            "driver_bindings": {},
-            "owner_mode_overrides": {},
-            "admin_user_ids": [],
-            "pending_value_requests": {},
-        }
+        _SESSIONS_CACHE = dict(_EMPTY_SESSIONS)
+        return _SESSIONS_CACHE
     try:
         with open(SESSIONS_PATH, "r", encoding="utf-8") as f:
             payload = json.load(f)
-        if not isinstance(payload, dict):
-            return {
-                "allowed_user_ids": [],
-                "driver_bindings": {},
-                "owner_mode_overrides": {},
-                "admin_user_ids": [],
-                "pending_value_requests": {},
-            }
-        payload.setdefault("allowed_user_ids", [])
-        payload.setdefault("driver_bindings", {})
-        payload.setdefault("owner_mode_overrides", {})
-        payload.setdefault("admin_user_ids", [])
-        payload.setdefault("pending_value_requests", {})
-        return payload
+        _SESSIONS_CACHE = _normalize_sessions(payload)
+        return _SESSIONS_CACHE
     except Exception:
-        return {
-            "allowed_user_ids": [],
-            "driver_bindings": {},
-            "owner_mode_overrides": {},
-            "admin_user_ids": [],
-            "pending_value_requests": {},
-        }
+        _SESSIONS_CACHE = dict(_EMPTY_SESSIONS)
+        return _SESSIONS_CACHE
 
 
 def _save_sessions(payload: dict[str, Any]) -> None:
+    global _SESSIONS_CACHE
+    normalized = _normalize_sessions(payload)
+    _SESSIONS_CACHE = normalized
     try:
-        payload.setdefault("allowed_user_ids", [])
-        payload.setdefault("driver_bindings", {})
-        payload.setdefault("owner_mode_overrides", {})
-        payload.setdefault("admin_user_ids", [])
-        payload.setdefault("pending_value_requests", {})
         with open(SESSIONS_PATH, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+            json.dump(normalized, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        # На Docker/хостинге файл может быть read-only — продолжаем в памяти.
+        print(f"Telegram bot: sessions kept in memory only ({e})")
 
 
 def _load_granted_ids() -> set[int]:
