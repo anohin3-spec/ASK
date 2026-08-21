@@ -28,7 +28,11 @@ from database import Database, MODE
 
 load_dotenv()
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TOKEN = (
+    os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    or os.getenv("BOT_TOKEN", "").strip()
+    or os.getenv("API_TOKEN", "").strip()
+)
 ALLOWED_IDS_RAW = os.getenv("TELEGRAM_ALLOWED_USER_IDS", "").strip()
 COMPANY_ID = os.getenv("TELEGRAM_COMPANY_ID", "").strip()
 ACCESS_CODE = os.getenv("TELEGRAM_ACCESS_CODE", "").strip()
@@ -1301,7 +1305,10 @@ class FleetBot:
 
 def main():
     if not TOKEN:
-        raise RuntimeError("Не задан TELEGRAM_BOT_TOKEN")
+        raise RuntimeError(
+            "Не задан токен бота. Укажите TELEGRAM_BOT_TOKEN или BOT_TOKEN в переменных окружения."
+        )
+    print(f"Telegram bot: token loaded (id prefix {TOKEN.split(':', 1)[0]})")
     bot = FleetBot()
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", bot.start))
