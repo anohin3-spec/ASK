@@ -4,22 +4,32 @@
 import os
 import sys
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
+
 # На хостинге (bothost/Docker) нет tkinter GUI — запускаем Telegram-бота.
 def _should_run_telegram_bot() -> bool:
     flag = (os.getenv("TELEGRAM_BOT_ONLY") or os.getenv("RUN_TELEGRAM_BOT") or "").strip().lower()
     if flag in ("1", "true", "yes", "on"):
         return True
-    token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
-    if not token:
-        return False
     in_docker = os.path.exists("/.dockerenv")
     no_display = sys.platform.startswith("linux") and not (
         os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
     )
-    return in_docker or no_display
+    # На сервере без GUI всегда бот (токен проверит telegram_bot.main).
+    if in_docker or no_display:
+        return True
+    token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+    return bool(token) and flag in ("1", "true", "yes", "on")
 
 
 if __name__ == "__main__" and _should_run_telegram_bot():
+    print("ASK: starting Telegram bot mode (no GUI)")
     from telegram_bot import main as run_telegram_bot
 
     run_telegram_bot()

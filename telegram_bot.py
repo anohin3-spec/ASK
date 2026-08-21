@@ -1334,7 +1334,8 @@ def main():
             pass
     app.add_error_handler(_on_error)
     print("Telegram bot started.")
-    app.run_polling()
+    # Сбрасываем webhook и старые апдейты — иначе polling на хостинге может «молчать».
+    app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
